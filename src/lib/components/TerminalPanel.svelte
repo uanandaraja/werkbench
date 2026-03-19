@@ -2,11 +2,22 @@
   import { onMount, tick } from "svelte";
   import { invalidateAll } from "$app/navigation";
   import type { FitAddon as GhosttyFitAddon, Terminal as GhosttyTerminal } from "ghostty-web";
-  import type { ListedSandbox } from "$lib/devbox/types";
-  import { killSandboxCommand, pauseSandboxCommand, resumeSandboxCommand } from "$lib/remote/devbox.remote";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import type { BrowserSession, ListedSandbox } from "$lib/devbox/types";
+  import {
+    killSandboxCommand,
+    pauseSandboxCommand,
+    resumeSandboxCommand,
+  } from "$lib/remote/devbox.remote";
   import { Button } from "$lib/components/ui/button/index.js";
-  import { Pause, Play, ArrowCounterClockwise, Trash, WarningCircle } from "phosphor-svelte";
+  import {
+    ArrowCounterClockwise,
+    Globe,
+    Pause,
+    Play,
+    Terminal,
+    Trash,
+    WarningCircle,
+  } from "phosphor-svelte";
 
   let {
     sandbox,
@@ -21,11 +32,17 @@
   let terminalElement = $state<HTMLDivElement | null>(null);
   let terminalState = $state<"idle" | "connecting" | "open" | "closed" | "error">("idle");
   let terminalError = $state("");
+  let panelMode = $state<"terminal" | "browser">("terminal");
+  let browserState = $state<BrowserSession["status"]>("idle");
+  let browserError = $state("");
+  let browserUrl = $state("");
+  let browserNonce = $state(0);
   let actionPending = $state(false);
   let actionError = $state("");
 
   let xterm: GhosttyTerminal | null = null;
   let fitAddon: GhosttyFitAddon | null = null;
+  let browserFrame = $state<HTMLIFrameElement | null>(null);
   let socket: WebSocket | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let ghosttyReady = false;
@@ -49,13 +66,19 @@
     }
   }
 
+  function resetBrowserState() {
+    browserState = "idle";
+    browserError = "";
+    browserUrl = "";
+  }
+
   function sendResize() {
     if (!socket || socket.readyState !== WebSocket.OPEN || !xterm) return;
     socket.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }));
   }
 
   async function syncActiveTerminal() {
-    if (!active || !xterm) return;
+    if (!active || panelMode !== "terminal" || !xterm) return;
 
     const currentRun = ++focusRun;
 
@@ -79,6 +102,14 @@
         xterm.focus();
         sendResize();
       });
+    });
+  }
+
+  async function syncActiveBrowser() {
+    if (!active || panelMode !== "browser") return;
+    await tick();
+    requestAnimationFrame(() => {
+      browserFrame?.focus();
     });
   }
 
@@ -134,7 +165,17 @@
       await resumeSandboxCommand({ sandboxId: sandbox.sandboxID });
       await invalidateAll();
       await tick();
-      await openTerminal();
+      switch (panelMode) {
+        case "browser": {
+          await openBrowser();
+          break;
+        }
+        case "terminal":
+        default: {
+          await openTerminal();
+          break;
+        }
+      }
     } catch (err) {
       actionError = err instanceof Error ? err.message : "Failed to resume";
     } finally {
@@ -150,6 +191,7 @@
       await pauseSandboxCommand({ sandboxId: sandbox.sandboxID });
       await invalidateAll();
       terminalState = "idle";
+      resetBrowserState();
     } catch (err) {
       actionError = err instanceof Error ? err.message : "Failed to pause";
     } finally {
@@ -164,12 +206,55 @@
       cleanupSocket();
       await killSandboxCommand({ sandboxId: sandbox.sandboxID });
       await invalidateAll();
+      resetBrowserState();
       onKilled?.();
     } catch (err) {
       actionError = err instanceof Error ? err.message : "Failed to kill";
     } finally {
       actionPending = false;
     }
+  }
+
+  function getBrowserProxyUrl() {
+    const url = new URL(`/api/browser/${sandbox.sandboxID}`, window.location.origin);
+    url.searchParams.set("nonce", String(browserNonce));
+    return url.toString();
+  }
+
+  async function openBrowser() {
+    if (sandbox.state !== "running") return;
+    browserState = "starting";
+    browserError = "";
+
+    if (!browserUrl) {
+      browserNonce += 1;
+    }
+
+    browserUrl = getBrowserProxyUrl();
+    panelMode = "browser";
+    await syncActiveBrowser();
+  }
+
+  async function reconnectBrowser() {
+    browserNonce += 1;
+    browserUrl = "";
+    await openBrowser();
+  }
+
+  async function showTerminal() {
+    panelMode = "terminal";
+    await syncActiveTerminal();
+  }
+
+  async function showBrowser() {
+    panelMode = "browser";
+
+    if (browserState === "idle" || !browserUrl) {
+      await openBrowser();
+      return;
+    }
+
+    await syncActiveBrowser();
   }
 
   onMount(() => {
@@ -233,8 +318,14 @@
   });
 
   $effect(() => {
-    if (ghosttyReady && active && xterm) {
+    if (ghosttyReady && active && panelMode === "terminal" && xterm) {
       void syncActiveTerminal();
+    }
+  });
+
+  $effect(() => {
+    if (active && panelMode === "browser" && browserUrl) {
+      void syncActiveBrowser();
     }
   });
 </script>
@@ -243,11 +334,39 @@
   <!-- Top bar -->
   <div class="flex h-10 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-4">
     <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1 rounded-md border border-border/60 bg-field/40 p-0.5">
+        <Button
+          size="xs"
+          variant={panelMode === "terminal" ? "secondary" : "ghost"}
+          onclick={showTerminal}
+          disabled={actionPending}
+        >
+          <Terminal class="size-3.5" />
+          Terminal
+        </Button>
+        <Button
+          size="xs"
+          variant={panelMode === "browser" ? "secondary" : "ghost"}
+          onclick={showBrowser}
+          disabled={sandbox.state !== "running" || actionPending}
+        >
+          <Globe class="size-3.5" />
+          Browser
+        </Button>
+      </div>
       <div
         class="size-1.5 rounded-full {sandbox.state === 'running' ? 'bg-status-running' : 'bg-status-paused'}"
       ></div>
       <span class="text-sm text-foreground/40 capitalize">{sandbox.state}</span>
-      {#if terminalState === "connecting"}
+      {#if panelMode === "browser"}
+        {#if browserState === "starting"}
+          <span class="text-sm text-foreground/30">starting browser...</span>
+        {:else if browserState === "open"}
+          <span class="text-sm text-foreground/30">browser ready</span>
+        {:else if browserState === "error"}
+          <span class="text-sm text-destructive/70">browser error</span>
+        {/if}
+      {:else if terminalState === "connecting"}
         <span class="text-sm text-foreground/30">connecting...</span>
       {:else if terminalState === "open"}
         <span class="text-sm text-foreground/30">connected</span>
@@ -259,6 +378,17 @@
     </div>
 
     <div class="flex items-center gap-1">
+      {#if panelMode === "browser"}
+        <Button
+          size="xs"
+          variant="ghost"
+          onclick={reconnectBrowser}
+          disabled={sandbox.state !== "running" || actionPending}
+          title="Reconnect browser"
+        >
+          <ArrowCounterClockwise class="size-3.5" />
+        </Button>
+      {:else}
       <Button
         size="xs"
         variant="ghost"
@@ -268,6 +398,7 @@
       >
         <ArrowCounterClockwise class="size-3.5" />
       </Button>
+      {/if}
       {#if sandbox.state === "paused"}
         <Button size="xs" variant="ghost" onclick={handleResume} disabled={actionPending}>
           <Play class="size-3.5" />
@@ -300,6 +431,13 @@
     </div>
   {/if}
 
+  {#if browserError}
+    <div class="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+      <WarningCircle class="size-3.5 flex-shrink-0" />
+      {browserError}
+    </div>
+  {/if}
+
   <!-- Paused notice -->
   {#if sandbox.state === "paused"}
     <div class="flex flex-1 items-center justify-center">
@@ -312,8 +450,7 @@
       </div>
     </div>
   {:else}
-    <!-- Terminal -->
-    <div class="terminal-shell flex-1 overflow-hidden">
+    <div class:hidden={panelMode !== "terminal"} class="terminal-shell flex-1 overflow-hidden">
         <div class="h-full p-1">
         <div
           class="h-full rounded-[calc(var(--radius)-0.2rem)] outline-none"
@@ -321,6 +458,44 @@
           tabindex="-1"
         ></div>
       </div>
+    </div>
+
+    <div class:hidden={panelMode !== "browser"} class="flex flex-1 flex-col overflow-hidden">
+      <div class="border-b border-sidebar-divider px-4 py-2 text-xs text-foreground/45">
+        Use the browser address bar inside the sandbox for local URLs like
+        <span class="font-mono text-foreground/60"> http://127.0.0.1:5173</span>.
+      </div>
+
+      {#if browserState === "idle"}
+        <div class="flex flex-1 items-center justify-center">
+          <div class="text-center">
+            <p class="text-sm text-foreground/50">Browser is not running yet</p>
+            <Button size="sm" class="mt-4" onclick={openBrowser} disabled={actionPending}>
+              <Globe class="size-3.5" />
+              Open browser
+            </Button>
+          </div>
+        </div>
+      {:else}
+        <div class="min-h-0 flex-1 p-1">
+          <iframe
+            title={`Browser for ${sandbox.metadata?.repoName ?? sandbox.sandboxID}`}
+            class="h-full w-full rounded-[calc(var(--radius)-0.2rem)] border border-border/60 bg-black outline-none"
+            bind:this={browserFrame}
+            tabindex="-1"
+            src={browserUrl}
+            onload={() => {
+              browserState = "open";
+              browserError = "";
+              browserFrame?.focus();
+            }}
+            onerror={() => {
+              browserState = "error";
+              browserError = "Browser session failed to load";
+            }}
+          ></iframe>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

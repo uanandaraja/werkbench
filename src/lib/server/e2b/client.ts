@@ -7,6 +7,7 @@ import type {
 import type { PlatformEnv, WorkspaceLaunchEnv } from "$lib/server/env";
 
 const defaultDomain = "e2b.app";
+const defaultBrowserPort = 6080;
 const defaultTerminalPort = 7681;
 
 function getDomain(env: PlatformEnv) {
@@ -27,6 +28,10 @@ function getDefaultTimeoutMs(env: PlatformEnv) {
 
 function getTerminalPort(env: PlatformEnv) {
   return Number(env.E2B_TERMINAL_PORT ?? defaultTerminalPort);
+}
+
+function getBrowserPort(env: PlatformEnv) {
+  return Number(env.E2B_BROWSER_PORT ?? defaultBrowserPort);
 }
 
 async function e2bFetch<T>(env: PlatformEnv, path: string, init?: RequestInit): Promise<T> {
@@ -66,6 +71,15 @@ export async function getSandboxDetail(env: PlatformEnv, sandboxId: string) {
   return e2bFetch<SandboxDetail>(env, `/sandboxes/${sandboxId}`, {
     method: "GET",
   });
+}
+
+function getSandboxHost(
+  env: PlatformEnv,
+  sandbox: Pick<SandboxDetail, "domain" | "sandboxID">,
+  port: number,
+) {
+  const domain = sandbox.domain || getDomain(env);
+  return `${port}-${sandbox.sandboxID}.${domain}`;
 }
 
 function getWorkspaceDir(workspace: Pick<Workspace, "repo">) {
@@ -147,6 +161,7 @@ export async function createSandbox(env: WorkspaceLaunchEnv, workspace: Workspac
         repoFullName: `${workspace.owner}/${workspace.repo}`,
       },
       envVars: {
+        E2B_BROWSER_PORT: String(getBrowserPort(env)),
         E2B_TERMINAL_PORT: String(getTerminalPort(env)),
       },
     }),
@@ -192,11 +207,41 @@ export async function killSandbox(env: PlatformEnv, sandboxId: string) {
   });
 }
 
+export async function ensureBrowserSession(
+  env: PlatformEnv,
+  sandboxId: string,
+  targetUrl?: string,
+) {
+  const sandbox = await Sandbox.connect(sandboxId, {
+    apiKey: env.E2B_API_KEY,
+    domain: env.E2B_DOMAIN,
+    timeoutMs: getDefaultTimeoutMs(env),
+  });
+
+  const command = targetUrl
+    ? `DEVBOX_BROWSER_START_URL=${shellEscape(targetUrl)} /usr/local/bin/start-browser-stack.sh`
+    : "/usr/local/bin/start-browser-stack.sh";
+
+  await sandbox.commands.run(command, {
+    user: "root",
+    timeoutMs: 120000,
+  });
+}
+
 export function getSandboxTerminalUrl(
   env: PlatformEnv,
   sandbox: Pick<SandboxDetail, "domain" | "sandboxID">,
 ) {
-  const domain = sandbox.domain || getDomain(env);
-  const port = getTerminalPort(env);
-  return `wss://${port}-${sandbox.sandboxID}.${domain}`;
+  return `wss://${getSandboxHost(env, sandbox, getTerminalPort(env))}`;
+}
+
+export function getSandboxBrowserUrl(
+  env: PlatformEnv,
+  sandbox: Pick<SandboxDetail, "domain" | "sandboxID">,
+) {
+  const host = getSandboxHost(env, sandbox, getBrowserPort(env));
+  const url = new URL(`https://${host}/vnc_lite.html`);
+  url.searchParams.set("path", "websockify");
+  url.searchParams.set("scale", "true");
+  return url.toString();
 }

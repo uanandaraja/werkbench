@@ -8,6 +8,7 @@ const authorizedKey = await readAuthorizedKey();
 const sandbox = await Sandbox.create(template, {
   timeoutMs,
   envs: {
+    E2B_BROWSER_PORT: process.env.E2B_BROWSER_PORT ?? "6080",
     E2B_SSH_PROXY_PORT: String(sshProxyPort),
   },
   lifecycle: {

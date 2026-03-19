@@ -40,6 +40,7 @@
 		}
 	],
 	"vars": {
+		"E2B_BROWSER_PORT": "6080",
 		"E2B_DOMAIN": "e2b.app",
 		"E2B_TEMPLATE": "devbox-dev",
 		"E2B_TERMINAL_PORT": "7681",

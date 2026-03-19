@@ -39,6 +39,13 @@ const aptPackages = [
   "gnupg",
   "gpg",
   "gh",
+  "dbus-x11",
+  "fonts-liberation",
+  "openbox",
+  "x11vnc",
+  "xauth",
+  "xdg-utils",
+  "xvfb",
 ];
 
 const userEnv = [
@@ -64,6 +71,11 @@ export const template = Template()
     "/usr/local/bin/start-ssh-stack.sh",
     { user: "root", mode: 0o755 },
   )
+  .copy(
+    "runtime/start-browser-stack.sh",
+    "/usr/local/bin/start-browser-stack.sh",
+    { user: "root", mode: 0o755 },
+  )
   .copy("runtime/sshd_config", "/etc/ssh/sshd_config_e2b", {
     user: "root",
     mode: 0o644,
@@ -78,9 +90,21 @@ export const template = Template()
       "mkdir -p /etc/apt/keyrings",
       "curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg",
       'echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list',
+      "curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg",
+      'echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list',
       "apt-get update",
-      "apt-get install -y --no-install-recommends nodejs",
+      "apt-get install -y --no-install-recommends nodejs google-chrome-stable",
       "rm -rf /var/lib/apt/lists/*",
+    ].join(" && "),
+  )
+  .runCmd(
+    [
+      "curl -fsSL https://github.com/novnc/noVNC/archive/refs/tags/v1.6.0.tar.gz -o /tmp/novnc.tar.gz",
+      "rm -rf /opt/novnc /opt/noVNC-1.6.0",
+      "tar -xzf /tmp/novnc.tar.gz -C /opt",
+      "mv /opt/noVNC-1.6.0 /opt/novnc",
+      "ln -sf /opt/novnc/vnc.html /opt/novnc/index.html",
+      "rm -f /tmp/novnc.tar.gz",
     ].join(" && "),
   )
   .runCmd(
@@ -99,7 +123,7 @@ export const template = Template()
       "rm -f /tmp/nvim-linux-x86_64.tar.gz",
     ].join(" && "),
   )
-  .runCmd("python3 -m pip install --break-system-packages websockets uv")
+  .runCmd("python3 -m pip install --break-system-packages websockets uv websockify")
   .runCmd("mkdir -p /etc/sudoers.d && printf 'user ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/e2b-user && chmod 440 /etc/sudoers.d/e2b-user")
   .runCmd("mkdir -p /home/user/workspace && chown -R user:user /home/user")
   .setUser("user")
@@ -123,6 +147,7 @@ export const template = Template()
       "nvim --version | head -n 1",
       "tmux -V",
       "rg --version | head -n 1",
+      "google-chrome-stable --version",
       "$HOME/.npm-global/bin/codex --version",
       "$HOME/.local/bin/claude --version",
       "$HOME/.opencode/bin/opencode --version",

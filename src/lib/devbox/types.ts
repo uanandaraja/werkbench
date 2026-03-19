@@ -47,6 +47,12 @@ export type SandboxDetail = {
   templateID: string;
 };
 
+export type BrowserSession = {
+  sandboxId: string;
+  status: "idle" | "starting" | "open" | "error";
+  url?: string;
+};
+
 export type DashboardData = {
   workspaces: Workspace[];
   sandboxes: ListedSandbox[];
