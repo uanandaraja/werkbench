@@ -1,19 +1,25 @@
 export type SandboxState = "running" | "paused";
 
-export interface ProfileDefinition {
+export type Workspace = {
   id: string;
-  label: string;
-  description: string;
-  template: string;
-  timeoutMs: number;
-  cwd: string;
-  terminalCommand: string;
-  bootstrapCommand?: string;
-  env: Record<string, string>;
-  metadata: Record<string, string>;
-}
+  name: string;
+  owner: string;
+  repo: string;
+  defaultBranch: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
-export interface ListedSandbox {
+export type WorkspaceInput = {
+  name: string;
+  owner: string;
+  repo: string;
+  defaultBranch?: string | null;
+  notes?: string | null;
+};
+
+export type ListedSandbox = {
   alias?: string;
   cpuCount: number;
   diskSizeMB: number;
@@ -25,9 +31,9 @@ export interface ListedSandbox {
   startedAt: string;
   state: SandboxState;
   templateID: string;
-}
+};
 
-export interface SandboxDetail {
+export type SandboxDetail = {
   alias?: string;
   cpuCount: number;
   diskSizeMB: number;
@@ -40,9 +46,9 @@ export interface SandboxDetail {
   startedAt: string;
   state: SandboxState;
   templateID: string;
-}
+};
 
-export interface DashboardData {
-  profiles: ProfileDefinition[];
+export type DashboardData = {
+  workspaces: Workspace[];
   sandboxes: ListedSandbox[];
-}
+};

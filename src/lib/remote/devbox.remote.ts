@@ -1,6 +1,6 @@
 import { command, query } from "$app/server";
 import type { DashboardData } from "$lib/devbox/types";
-import { getPlatformEnv } from "$lib/server/env";
+import { getPlatformEnv, type WorkspaceLaunchEnv } from "$lib/server/env";
 import {
   createSandbox,
   getSandboxDetail,
@@ -9,13 +9,19 @@ import {
   pauseSandbox,
   resumeSandbox,
 } from "$lib/server/e2b/client";
-import { getProfile, getProfiles } from "$lib/server/profiles";
+import {
+  createWorkspace,
+  deleteWorkspace,
+  getWorkspaceOrThrow,
+  listWorkspaces,
+  updateWorkspace,
+} from "$lib/server/workspaces/service";
 
 export const getDashboard = query(async (): Promise<DashboardData> => {
   const env = getPlatformEnv();
 
   return {
-    profiles: getProfiles(env),
+    workspaces: await listWorkspaces(env),
     sandboxes: await listSandboxes(env),
   };
 });
@@ -28,12 +34,52 @@ export const getSandbox = query(
   },
 );
 
-export const launchProfile = command(
+export const launchWorkspace = command(
   "unchecked",
-  async ({ profileId }: { profileId: string }) => {
+  async ({ workspaceId }: { workspaceId: string }) => {
     const env = getPlatformEnv();
-    const profile = getProfile(env, profileId);
-    return createSandbox(env, profile);
+    const workspace = await getWorkspaceOrThrow(env, workspaceId);
+    return createSandbox(env as WorkspaceLaunchEnv, workspace);
+  },
+);
+
+export const createWorkspaceCommand = command(
+  "unchecked",
+  async (input: {
+    name: string;
+    owner: string;
+    repo: string;
+    defaultBranch?: string | null;
+    notes?: string | null;
+  }) => {
+    const env = getPlatformEnv();
+    return createWorkspace(env, input);
+  },
+);
+
+export const updateWorkspaceCommand = command(
+  "unchecked",
+  async ({
+    workspaceId,
+    ...input
+  }: {
+    workspaceId: string;
+    name: string;
+    owner: string;
+    repo: string;
+    defaultBranch?: string | null;
+    notes?: string | null;
+  }) => {
+    const env = getPlatformEnv();
+    return updateWorkspace(env, workspaceId, input);
+  },
+);
+
+export const deleteWorkspaceCommand = command(
+  "unchecked",
+  async ({ workspaceId }: { workspaceId: string }) => {
+    const env = getPlatformEnv();
+    return deleteWorkspace(env, workspaceId);
   },
 );
 

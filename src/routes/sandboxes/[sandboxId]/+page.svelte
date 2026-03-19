@@ -306,7 +306,8 @@
         </div>
 
         <CardDescription class="text-sm leading-6 md:text-base">
-          {sandbox.metadata?.profileLabel ?? sandbox.metadata?.profileId ?? "unprofiled"} ·
+          {sandbox.metadata?.workspaceName ?? "orphaned workspace"} ·
+          {sandbox.metadata?.repoFullName ?? "repo unknown"} ·
           started {formatDateTime(sandbox.startedAt)} · {formatRelativeExpiry(sandbox.endAt)}
         </CardDescription>
       </div>

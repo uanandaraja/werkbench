@@ -16,6 +16,28 @@ BOOTSTRAP_MARKER="/home/user/.cache/devbox/bootstrap.done"
 BOOTSTRAP_CWD="${DEVBOX_CWD:-/home/user/workspace}"
 USER_HOME="/home/user"
 USER_NAME="user"
+REPO_OWNER="${DEVBOX_REPO_OWNER:-}"
+REPO_NAME="${DEVBOX_REPO_NAME:-}"
+REPO_DEFAULT_BRANCH="${DEVBOX_REPO_DEFAULT_BRANCH:-}"
+REPO_URL=""
+REPO_DIR="${BOOTSTRAP_CWD}"
+
+if [ -n "${REPO_OWNER}" ] && [ -n "${REPO_NAME}" ]; then
+  REPO_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}.git"
+fi
+
+sudo -u "${USER_NAME}" env \
+  HOME="${USER_HOME}" \
+  USER="${USER_NAME}" \
+  LOGNAME="${USER_NAME}" \
+  GH_TOKEN="${GH_TOKEN:-}" \
+  GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
+  bash -lc \
+  "mkdir -p \"${REPO_DIR}\" \
+    && git config --global credential.helper '!gh auth git-credential' \
+    && git config --global credential.https://github.com.helper '' \
+    && if [ -n \"${GH_TOKEN:-}\" ]; then gh auth setup-git >/dev/null 2>&1 || true; fi" \
+  >/var/log/e2b/github-auth.log 2>&1
 
 if [ -n "${DEVBOX_BOOTSTRAP_COMMAND:-}" ] && [ ! -f "${BOOTSTRAP_MARKER}" ]; then
   sudo -u "${USER_NAME}" env \
@@ -28,6 +50,20 @@ if [ -n "${DEVBOX_BOOTSTRAP_COMMAND:-}" ] && [ ! -f "${BOOTSTRAP_MARKER}" ]; the
     >/var/log/e2b/bootstrap.log 2>&1
   touch "${BOOTSTRAP_MARKER}"
   chown "${USER_NAME}:${USER_NAME}" "${BOOTSTRAP_MARKER}"
+fi
+
+if [ -n "${REPO_URL}" ] && [ ! -d "${REPO_DIR}/.git" ]; then
+  sudo -u "${USER_NAME}" env \
+    HOME="${USER_HOME}" \
+    USER="${USER_NAME}" \
+    LOGNAME="${USER_NAME}" \
+    GH_TOKEN="${GH_TOKEN:-}" \
+    GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
+    bash -lc \
+    "mkdir -p \"$(dirname "${REPO_DIR}")\" \
+      && git clone \"${REPO_URL}\" \"${REPO_DIR}\" \
+      && if [ -n \"${REPO_DEFAULT_BRANCH}\" ]; then git -C \"${REPO_DIR}\" checkout \"${REPO_DEFAULT_BRANCH}\" || true; fi" \
+    >/var/log/e2b/repo-bootstrap.log 2>&1
 fi
 
 ssh-keygen -A >/dev/null 2>&1 || true

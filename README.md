@@ -10,6 +10,7 @@ required:
 
 ```bash
 E2B_API_KEY=
+GITHUB_TOKEN=
 ```
 
 install:
@@ -17,6 +18,7 @@ install:
 ```bash
 bun install
 bun run gen
+bun run db:migrate:local
 ```
 
 web app:
@@ -32,6 +34,14 @@ deploy:
 
 ```bash
 wrangler deploy
+```
+
+db:
+
+```bash
+bun run db:generate
+bun run db:migrate:local
+bun run db:migrate:remote
 ```
 
 template admin:

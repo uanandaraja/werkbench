@@ -16,8 +16,14 @@ import websockets
 
 
 PORT = int(os.environ.get("E2B_TERMINAL_PORT", "7681"))
-WORKDIR = os.environ.get("DEVBOX_CWD", "/home/user/workspace")
-COMMAND = os.environ.get("DEVBOX_TERMINAL_COMMAND", "bash -l")
+DEFAULT_WORKDIR = os.environ.get("DEVBOX_CWD", "/home/user/workspace")
+DEFAULT_COMMAND = os.environ.get("DEVBOX_TERMINAL_COMMAND", "bash -l")
+SESSION_CONFIG_PATH = Path(
+    os.environ.get(
+        "DEVBOX_TERMINAL_CONFIG_PATH",
+        "/home/user/.cache/devbox/terminal-session.json",
+    )
+)
 
 
 def set_winsize(fd: int, rows: int, cols: int) -> None:
@@ -43,17 +49,31 @@ def shell_env() -> dict[str, str]:
     return env
 
 
+def read_terminal_config() -> tuple[str, str]:
+    if SESSION_CONFIG_PATH.exists():
+        try:
+            payload = json.loads(SESSION_CONFIG_PATH.read_text())
+            cwd = payload.get("cwd") or DEFAULT_WORKDIR
+            command = payload.get("command") or DEFAULT_COMMAND
+            return cwd, command
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return DEFAULT_WORKDIR, DEFAULT_COMMAND
+
+
 async def handle_terminal(websocket):
     master_fd, slave_fd = pty.openpty()
     set_winsize(slave_fd, 24, 80)
+    workdir, command = read_terminal_config()
 
     process = subprocess.Popen(
-        ["bash", "-lc", f"cd {shlex.quote(WORKDIR)} && exec {COMMAND}"],
+        ["bash", "-lc", f"cd {shlex.quote(workdir)} && exec {command}"],
         stdin=slave_fd,
         stdout=slave_fd,
         stderr=slave_fd,
         start_new_session=True,
-        cwd=WORKDIR,
+        cwd=workdir,
         env=shell_env(),
     )
     os.close(slave_fd)

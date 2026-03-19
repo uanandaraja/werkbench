@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { listSandboxes } from "$lib/server/e2b/client";
-import { getProfiles } from "$lib/server/profiles";
+import { listWorkspaces } from "$lib/server/workspaces/service";
 
 export const load: PageServerLoad = async ({ platform }) => {
   if (!platform) {
@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 
   return {
     dashboard: {
-      profiles: getProfiles(platform.env),
+      workspaces: await listWorkspaces(platform.env),
       sandboxes: await listSandboxes(platform.env),
     },
   };
