@@ -1,12 +1,38 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
   import { onMount, tick } from "svelte";
-  import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
+  import { Terminal } from "@xterm/xterm";
   import "@xterm/xterm/css/xterm.css";
   import { formatDateTime, formatRelativeExpiry } from "$lib/devbox/format";
-  import { killSandboxCommand, pauseSandboxCommand, resumeSandboxCommand } from "$lib/remote/devbox.remote";
   import type { PageData } from "./$types";
+  import {
+    killSandboxCommand,
+    pauseSandboxCommand,
+    resumeSandboxCommand,
+  } from "$lib/remote/devbox.remote";
+  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert/index.js";
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+  } from "$lib/components/ui/card/index.js";
+  import { Separator } from "$lib/components/ui/separator/index.js";
+  import {
+    ArrowLeft,
+    Cpu,
+    HardDrive,
+    Pause,
+    Play,
+    RefreshCcw,
+    RotateCcw,
+    TerminalSquare,
+    Trash2,
+  } from "lucide-svelte";
 
   let { data }: { data: PageData } = $props();
 
@@ -24,6 +50,14 @@
   let socket: WebSocket | null = null;
   let sessionId = "";
   let resizeObserver: ResizeObserver | null = null;
+
+  function cssVariable(name: string, fallback: string) {
+    if (typeof document === "undefined") {
+      return fallback;
+    }
+
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  }
 
   async function refreshSandbox() {
     pageError = "";
@@ -76,9 +110,7 @@
     sessionId = crypto.randomUUID();
 
     const protocol = location.protocol === "https:" ? "wss" : "ws";
-    const url = new URL(
-      `${protocol}://${location.host}/api/terminal/${sandbox.sandboxID}`,
-    );
+    const url = new URL(`${protocol}://${location.host}/api/terminal/${sandbox.sandboxID}`);
     url.searchParams.set("session", sessionId);
 
     socket = new WebSocket(url);
@@ -178,14 +210,13 @@
     terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
-      fontFamily:
-        '"Berkeley Mono", "JetBrains Mono", "SFMono-Regular", Menlo, monospace',
+      fontFamily: cssVariable("--font-mono", "ui-monospace, monospace"),
       fontSize: 14,
       theme: {
-        background: "#0b0f14",
-        foreground: "#edf4ff",
-        cursor: "#6ee7b7",
-        selectionBackground: "rgba(103, 200, 255, 0.22)",
+        background: cssVariable("--terminal-background", "#0b0f14"),
+        foreground: cssVariable("--terminal-foreground", "#edf4ff"),
+        cursor: cssVariable("--terminal-cursor", "#6ee7b7"),
+        selectionBackground: cssVariable("--terminal-selection", "rgba(103, 200, 255, 0.22)"),
       },
     });
     fitAddon = new FitAddon();
@@ -193,9 +224,9 @@
     terminal.open(terminalElement);
     fitAddon.fit();
 
-    terminal.onData((data) => {
+    terminal.onData((input) => {
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "input", data }));
+        socket.send(JSON.stringify({ type: "input", data: input }));
       }
     });
 
@@ -222,208 +253,140 @@
   <title>{sandboxId} · Devbox</title>
 </svelte:head>
 
-<div class="shell">
-  <div class="topbar">
-    <a href="/">← Back</a>
-    <div class="topbar-actions">
-      <button onclick={refreshSandbox} disabled={actionPending}>Refresh status</button>
+<div class="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <Button variant="ghost" href="/" class="w-fit">
+      <ArrowLeft class="size-4" />
+      Back
+    </Button>
+
+    <div class="flex flex-wrap gap-2">
+      <Button variant="outline" onclick={refreshSandbox} disabled={actionPending}>
+        <RefreshCcw class="size-4" />
+        Refresh status
+      </Button>
       {#if sandbox.state === "paused"}
-        <button data-variant="accent" onclick={handleResume} disabled={actionPending}>
+        <Button onclick={handleResume} disabled={actionPending}>
+          <Play class="size-4" />
           Resume
-        </button>
+        </Button>
       {:else}
-        <button onclick={handlePause} disabled={actionPending}>Pause</button>
+        <Button variant="outline" onclick={handlePause} disabled={actionPending}>
+          <Pause class="size-4" />
+          Pause
+        </Button>
       {/if}
-      <button data-variant="danger" onclick={handleKill} disabled={actionPending}>
+      <Button variant="destructive" onclick={handleKill} disabled={actionPending}>
+        <Trash2 class="size-4" />
         Kill
-      </button>
+      </Button>
     </div>
   </div>
 
   {#if pageError}
-    <p class="error-banner">{pageError}</p>
+    <Alert variant="destructive" class="surface-shadow border-destructive/30 bg-destructive/8">
+      <AlertTitle>Sandbox action failed</AlertTitle>
+      <AlertDescription>{pageError}</AlertDescription>
+    </Alert>
   {/if}
 
-  <section class="surface header-card">
-    <div>
-      <div class="header-row">
-        <h1>{sandbox.sandboxID}</h1>
-        <span class="pill" data-state={sandbox.state}>{sandbox.state}</span>
-      </div>
-      <p class="muted subtitle">
-        {sandbox.metadata?.profileLabel ?? sandbox.metadata?.profileId ?? "unprofiled"} ·
-        started {formatDateTime(sandbox.startedAt)} · {formatRelativeExpiry(sandbox.endAt)}
-      </p>
-    </div>
+  <Card class="surface-shadow border-border/70 bg-card/85 backdrop-blur-xl">
+    <CardHeader class="gap-5 md:grid-cols-[1fr_auto]">
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <CardTitle class="text-3xl tracking-tight md:text-4xl">{sandbox.sandboxID}</CardTitle>
+          <Badge
+            variant={sandbox.state === "running" ? "default" : "secondary"}
+            class={sandbox.state === "running"
+              ? "rounded-full bg-primary/18 text-primary"
+              : "rounded-full bg-secondary text-secondary-foreground"}
+          >
+            {sandbox.state}
+          </Badge>
+        </div>
 
-    <dl class="header-meta">
-      <div>
-        <dt>Template</dt>
-        <dd>{sandbox.templateID}</dd>
-      </div>
-      <div>
-        <dt>Memory</dt>
-        <dd>{sandbox.memoryMB} MiB</dd>
-      </div>
-      <div>
-        <dt>CPU</dt>
-        <dd>{sandbox.cpuCount}</dd>
-      </div>
-    </dl>
-  </section>
-
-  <section class="surface terminal-card">
-    <div class="terminal-toolbar">
-      <div>
-        <strong>Terminal</strong>
-        <p class="muted toolbar-copy">
-          New PTY on each reconnect. Use <code>tmux</code> inside the sandbox if you want persistence.
-        </p>
+        <CardDescription class="text-sm leading-6 md:text-base">
+          {sandbox.metadata?.profileLabel ?? sandbox.metadata?.profileId ?? "unprofiled"} ·
+          started {formatDateTime(sandbox.startedAt)} · {formatRelativeExpiry(sandbox.endAt)}
+        </CardDescription>
       </div>
 
-      <div class="terminal-actions">
-        <span class="pill">{terminalState}</span>
-        <button data-variant="accent" onclick={openTerminal} disabled={sandbox.state !== "running"}>
-          Reconnect
-        </button>
+      <CardContent class="grid w-full gap-3 px-0 sm:grid-cols-3 md:w-auto md:min-w-[25rem]">
+        <div class="rounded-xl border border-border/80 bg-background/55 p-3">
+          <p class="text-muted-foreground text-xs uppercase tracking-[0.14em]">Template</p>
+          <p class="mt-1 break-all text-sm font-medium">{sandbox.templateID}</p>
+        </div>
+        <div class="rounded-xl border border-border/80 bg-background/55 p-3">
+          <p class="text-muted-foreground flex items-center gap-1 text-xs uppercase tracking-[0.14em]">
+            <HardDrive class="size-3.5" />
+            Memory
+          </p>
+          <p class="mt-1 text-sm font-medium">{sandbox.memoryMB} MiB</p>
+        </div>
+        <div class="rounded-xl border border-border/80 bg-background/55 p-3">
+          <p class="text-muted-foreground flex items-center gap-1 text-xs uppercase tracking-[0.14em]">
+            <Cpu class="size-3.5" />
+            CPU
+          </p>
+          <p class="mt-1 text-sm font-medium">{sandbox.cpuCount}</p>
+        </div>
+      </CardContent>
+    </CardHeader>
+  </Card>
+
+  <Card class="surface-shadow overflow-hidden border-border/70 bg-card/84 backdrop-blur-xl">
+    <CardHeader class="gap-4">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="space-y-2">
+          <CardTitle class="flex items-center gap-2 text-xl">
+            <TerminalSquare class="size-5 text-accent" />
+            Terminal
+          </CardTitle>
+          <CardDescription class="max-w-2xl leading-6">
+            New PTY on each reconnect. Use <code class="rounded bg-muted px-1.5 py-0.5 text-xs">tmux</code>
+            inside the sandbox if you want persistence.
+          </CardDescription>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" class="rounded-full capitalize">
+            {terminalState}
+          </Badge>
+          <Button onclick={openTerminal} disabled={sandbox.state !== "running"}>
+            <RotateCcw class="size-4" />
+            Reconnect
+          </Button>
+        </div>
       </div>
-    </div>
+    </CardHeader>
 
-    {#if terminalError}
-      <p class="error-banner">{terminalError}</p>
-    {/if}
+    <CardContent class="space-y-4">
+      {#if terminalError}
+        <Alert variant="destructive" class="border-destructive/30 bg-destructive/8">
+          <AlertTitle>Terminal error</AlertTitle>
+          <AlertDescription>{terminalError}</AlertDescription>
+        </Alert>
+      {/if}
 
-    {#if sandbox.state === "paused"}
-      <div class="paused">
-        <p class="muted">Sandbox is paused. Resume it to open a new terminal session.</p>
+      {#if sandbox.state === "paused"}
+        <Alert class="border-border/80 bg-background/50">
+          <AlertTitle>Sandbox paused</AlertTitle>
+          <AlertDescription>
+            Resume this sandbox to open a fresh terminal session.
+          </AlertDescription>
+        </Alert>
+      {/if}
+
+      <Separator />
+
+      <div
+        class="terminal-shell overflow-hidden rounded-xl border border-border/80 p-1"
+      >
+        <div
+          class="min-h-[50vh] rounded-[calc(var(--radius)-0.2rem)] md:min-h-[62vh]"
+          bind:this={terminalElement}
+        ></div>
       </div>
-    {/if}
-
-    <div class="terminal-frame" bind:this={terminalElement}></div>
-  </section>
+    </CardContent>
+  </Card>
 </div>
-
-<style>
-  .topbar {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-
-  .topbar a {
-    text-decoration: none;
-    color: var(--muted);
-  }
-
-  .topbar-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .header-card,
-  .terminal-card {
-    border-radius: 24px;
-    padding: 1.25rem;
-  }
-
-  .header-card {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .header-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .header-row h1 {
-    margin: 0;
-    font-size: clamp(1.4rem, 2vw, 2.1rem);
-  }
-
-  .subtitle {
-    margin: 0.45rem 0 0;
-  }
-
-  .header-meta {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-    margin: 0;
-  }
-
-  .header-meta dt {
-    color: var(--muted);
-    font-size: 0.82rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .header-meta dd {
-    margin: 0;
-  }
-
-  .terminal-toolbar {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: start;
-    margin-bottom: 1rem;
-  }
-
-  .toolbar-copy {
-    margin: 0.25rem 0 0;
-  }
-
-  .terminal-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .terminal-frame {
-    min-height: 62vh;
-    border-radius: 18px;
-    overflow: hidden;
-    background: #0b0f14;
-    border: 1px solid rgba(42, 52, 66, 0.8);
-    padding: 0.35rem;
-  }
-
-  .paused {
-    margin-bottom: 0.75rem;
-  }
-
-  .error-banner {
-    margin: 0 0 1rem;
-    padding: 0.9rem 1rem;
-    border-radius: 18px;
-    border: 1px solid rgba(248, 113, 113, 0.35);
-    background: rgba(248, 113, 113, 0.12);
-    color: #ffd4d4;
-  }
-
-  @media (max-width: 760px) {
-    .topbar,
-    .header-card,
-    .terminal-toolbar {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .header-meta {
-      grid-template-columns: 1fr;
-    }
-
-    .terminal-frame {
-      min-height: 50vh;
-    }
-  }
-</style>
