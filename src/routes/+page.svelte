@@ -48,11 +48,29 @@
   function emptyWorkspaceForm() {
     return {
       name: "",
-      owner: "",
-      repo: "",
+      repoUrl: "",
       defaultBranch: "",
       notes: "",
     };
+  }
+
+  function toDisplayName(repoUrl: string) {
+    const normalized = repoUrl.trim().replace(/\/+$/, "");
+
+    if (!normalized) {
+      return "";
+    }
+
+    const match =
+      normalized.match(/([^/:]+?)(?:\.git)?$/) ??
+      normalized.match(/^([^/]+)\/([^/]+?)(?:\.git)?$/);
+
+    const repoName = match ? match[match.length - 1] : normalized;
+
+    return repoName
+      .replace(/\.git$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
   }
 
   let createForm = $state(emptyWorkspaceForm());
@@ -62,6 +80,8 @@
   let pendingWorkspaceAction = $state<string | null>(null);
   let pendingSandboxAction = $state<string | null>(null);
   let errorMessage = $state("");
+  let createNameTouched = $state(false);
+  let editNameTouched = $state(false);
 
   function sandboxesForWorkspace(workspaceId: string) {
     return data.dashboard.sandboxes.filter(
@@ -79,10 +99,10 @@
 
   function beginEdit(workspace: Workspace) {
     editingWorkspaceId = workspace.id;
+    editNameTouched = false;
     editForm = {
       name: workspace.name,
-      owner: workspace.owner,
-      repo: workspace.repo,
+      repoUrl: `${workspace.owner}/${workspace.repo}`,
       defaultBranch: workspace.defaultBranch ?? "",
       notes: workspace.notes ?? "",
     };
@@ -90,7 +110,36 @@
 
   function cancelEdit() {
     editingWorkspaceId = null;
+    editNameTouched = false;
     editForm = emptyWorkspaceForm();
+  }
+
+  function handleCreateNameInput(value: string) {
+    createNameTouched = value.trim().length > 0;
+    createForm.name = value;
+  }
+
+  function handleCreateRepoUrlInput(value: string) {
+    createForm.repoUrl = value;
+
+    if (!createNameTouched || !createForm.name.trim()) {
+      createForm.name = toDisplayName(value);
+      createNameTouched = false;
+    }
+  }
+
+  function handleEditNameInput(value: string) {
+    editNameTouched = value.trim().length > 0;
+    editForm.name = value;
+  }
+
+  function handleEditRepoUrlInput(value: string) {
+    editForm.repoUrl = value;
+
+    if (!editNameTouched || !editForm.name.trim()) {
+      editForm.name = toDisplayName(value);
+      editNameTouched = false;
+    }
   }
 
   async function refreshDashboard() {
@@ -111,12 +160,12 @@
     try {
       await createWorkspaceCommand({
         name: createForm.name,
-        owner: createForm.owner,
-        repo: createForm.repo,
+        repoUrl: createForm.repoUrl,
         defaultBranch: createForm.defaultBranch || null,
         notes: createForm.notes || null,
       });
       createForm = emptyWorkspaceForm();
+      createNameTouched = false;
       await invalidateAll();
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : "Failed to create workspace";
@@ -134,8 +183,7 @@
       await updateWorkspaceCommand({
         workspaceId,
         name: editForm.name,
-        owner: editForm.owner,
-        repo: editForm.repo,
+        repoUrl: editForm.repoUrl,
         defaultBranch: editForm.defaultBranch || null,
         notes: editForm.notes || null,
       });
@@ -272,27 +320,32 @@
     <CardHeader>
       <CardTitle class="text-2xl">New workspace</CardTitle>
       <CardDescription>
-        Minimal POC record: display name, GitHub repo, optional default branch, optional
-        notes.
+        Minimal POC record: display name, GitHub URL, optional default branch, optional notes.
       </CardDescription>
     </CardHeader>
     <CardContent>
       <form class="grid gap-4 md:grid-cols-2" onsubmit={handleCreateWorkspace}>
         <label class="grid gap-2 text-sm">
           <span class="text-muted-foreground">Display name</span>
-          <input class={fieldClass} bind:value={createForm.name} placeholder="Myfounder" />
+          <input
+            class={fieldClass}
+            value={createForm.name}
+            oninput={(event) => handleCreateNameInput(event.currentTarget.value)}
+            placeholder="Presenteazy"
+          />
         </label>
         <label class="grid gap-2 text-sm">
           <span class="text-muted-foreground">Default branch</span>
           <input class={fieldClass} bind:value={createForm.defaultBranch} placeholder="main" />
         </label>
-        <label class="grid gap-2 text-sm">
-          <span class="text-muted-foreground">GitHub owner</span>
-          <input class={fieldClass} bind:value={createForm.owner} placeholder="uanandaraja" />
-        </label>
-        <label class="grid gap-2 text-sm">
-          <span class="text-muted-foreground">GitHub repo</span>
-          <input class={fieldClass} bind:value={createForm.repo} placeholder="devbox" />
+        <label class="grid gap-2 text-sm md:col-span-2">
+          <span class="text-muted-foreground">GitHub repo URL</span>
+          <input
+            class={fieldClass}
+            value={createForm.repoUrl}
+            oninput={(event) => handleCreateRepoUrlInput(event.currentTarget.value)}
+            placeholder="https://github.com/uanandaraja/devbox"
+          />
         </label>
         <label class="grid gap-2 text-sm md:col-span-2">
           <span class="text-muted-foreground">Notes</span>
@@ -390,19 +443,23 @@
               <form class="grid gap-4 rounded-xl border border-border/80 bg-background/45 p-4 md:grid-cols-2" onsubmit={(event) => handleUpdateWorkspace(event, workspace.id)}>
                 <label class="grid gap-2 text-sm">
                   <span class="text-muted-foreground">Display name</span>
-                  <input class={fieldClass} bind:value={editForm.name} />
+                  <input
+                    class={fieldClass}
+                    value={editForm.name}
+                    oninput={(event) => handleEditNameInput(event.currentTarget.value)}
+                  />
                 </label>
                 <label class="grid gap-2 text-sm">
                   <span class="text-muted-foreground">Default branch</span>
                   <input class={fieldClass} bind:value={editForm.defaultBranch} />
                 </label>
-                <label class="grid gap-2 text-sm">
-                  <span class="text-muted-foreground">GitHub owner</span>
-                  <input class={fieldClass} bind:value={editForm.owner} />
-                </label>
-                <label class="grid gap-2 text-sm">
-                  <span class="text-muted-foreground">GitHub repo</span>
-                  <input class={fieldClass} bind:value={editForm.repo} />
+                <label class="grid gap-2 text-sm md:col-span-2">
+                  <span class="text-muted-foreground">GitHub repo URL</span>
+                  <input
+                    class={fieldClass}
+                    value={editForm.repoUrl}
+                    oninput={(event) => handleEditRepoUrlInput(event.currentTarget.value)}
+                  />
                 </label>
                 <label class="grid gap-2 text-sm md:col-span-2">
                   <span class="text-muted-foreground">Notes</span>

@@ -33,6 +33,41 @@ function validateGithubName(value: string, field: string) {
   return value;
 }
 
+function parseGithubRepo(repoUrl: string) {
+  const normalized = normalizeRequired(repoUrl, "GitHub repo").replace(/\/+$/, "");
+
+  const sshMatch = normalized.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i);
+
+  if (sshMatch) {
+    return {
+      owner: validateGithubName(sshMatch[1], "GitHub owner"),
+      repo: validateGithubName(sshMatch[2], "GitHub repo"),
+    };
+  }
+
+  const httpsMatch = normalized.match(
+    /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/)?$/i,
+  );
+
+  if (httpsMatch) {
+    return {
+      owner: validateGithubName(httpsMatch[1], "GitHub owner"),
+      repo: validateGithubName(httpsMatch[2], "GitHub repo"),
+    };
+  }
+
+  const shortMatch = normalized.match(/^([^/]+)\/([^/]+)$/);
+
+  if (shortMatch) {
+    return {
+      owner: validateGithubName(shortMatch[1], "GitHub owner"),
+      repo: validateGithubName(shortMatch[2].replace(/\.git$/i, ""), "GitHub repo"),
+    };
+  }
+
+  throw new Error("GitHub repo must be a GitHub URL or owner/repo");
+}
+
 function mapWorkspaceRow(row: typeof workspacesTable.$inferSelect): Workspace {
   return {
     id: row.id,
@@ -47,17 +82,13 @@ function mapWorkspaceRow(row: typeof workspacesTable.$inferSelect): Workspace {
 }
 
 function sanitizeWorkspaceInput(input: WorkspaceInput) {
+  const parsedRepo = parseGithubRepo(input.repoUrl);
+
   return {
     name: normalizeRequired(input.name, "Workspace name"),
-    owner: validateGithubName(
-      normalizeRequired(input.owner, "GitHub owner"),
-      "GitHub owner",
-    ),
-    repo: validateGithubName(
-      normalizeRequired(input.repo, "GitHub repo"),
-      "GitHub repo",
-    ),
-    defaultBranch: normalizeOptional(input.defaultBranch),
+    owner: parsedRepo.owner,
+    repo: parsedRepo.repo,
+    defaultBranch: normalizeOptional(input.defaultBranch) ?? "main",
     notes: normalizeOptional(input.notes),
   };
 }

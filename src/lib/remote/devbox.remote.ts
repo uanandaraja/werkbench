@@ -47,8 +47,7 @@ export const createWorkspaceCommand = command(
   "unchecked",
   async (input: {
     name: string;
-    owner: string;
-    repo: string;
+    repoUrl: string;
     defaultBranch?: string | null;
     notes?: string | null;
   }) => {
@@ -65,8 +64,7 @@ export const updateWorkspaceCommand = command(
   }: {
     workspaceId: string;
     name: string;
-    owner: string;
-    repo: string;
+    repoUrl: string;
     defaultBranch?: string | null;
     notes?: string | null;
   }) => {

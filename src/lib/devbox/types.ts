@@ -13,8 +13,7 @@ export type Workspace = {
 
 export type WorkspaceInput = {
   name: string;
-  owner: string;
-  repo: string;
+  repoUrl: string;
   defaultBranch?: string | null;
   notes?: string | null;
 };
