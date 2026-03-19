@@ -191,7 +191,7 @@
   <!-- Top bar -->
   <div class="flex h-10 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-4">
     <div class="flex items-center gap-3">
-      <span class="font-mono text-sm text-foreground/60">{sandbox.sandboxID}</span>
+      <span class="hidden font-mono text-sm text-foreground/60 md:inline">{sandbox.sandboxID}</span>
       <div
         class="size-1.5 rounded-full {sandbox.state === 'running' ? 'bg-status-running' : 'bg-status-paused'}"
       ></div>
