@@ -20,7 +20,7 @@
     CardTitle,
   } from "$lib/components/ui/card/index.js";
   import { Separator } from "$lib/components/ui/separator/index.js";
-  import { Boxes, Clock3, Play, RefreshCcw, Rocket, SquareTerminal, Trash2 } from "lucide-svelte";
+  import { Cube, Clock, Play, ArrowsCounterClockwise, Rocket, TerminalWindow, Trash } from "phosphor-svelte";
 
   let { data }: { data: PageData } = $props();
 
@@ -128,11 +128,11 @@
 
       <CardContent class="flex flex-wrap items-center justify-start gap-3 px-0 md:justify-end">
         <Button onclick={refreshDashboard}>
-          <RefreshCcw class="size-4" />
+          <ArrowsCounterClockwise class="size-4" />
           Refresh
         </Button>
         <Badge variant="secondary" class="gap-1 rounded-full px-3 py-1">
-          <Boxes class="size-3.5" />
+          <Cube class="size-3.5" />
           {data.dashboard.sandboxes.length}
           sandbox{data.dashboard.sandboxes.length === 1 ? "" : "es"}
         </Badge>
@@ -157,7 +157,7 @@
               <CardDescription class="leading-6">{profile.description}</CardDescription>
             </div>
             <Badge variant="outline" class="rounded-full">
-              <Clock3 class="size-3.5" />
+              <Clock class="size-3.5" />
               {Math.round(profile.timeoutMs / 60000)}m ttl
             </Badge>
           </div>
@@ -184,7 +184,7 @@
             onclick={() => handleLaunch(profile.id)}
             disabled={pendingLaunch === profile.id}
           >
-            <Rocket class="size-4" />
+            <Rocket class="size-4" weight="fill" />
             {pendingLaunch === profile.id ? "Launching..." : "Launch sandbox"}
           </Button>
 
@@ -234,7 +234,7 @@
                       </Button>
                     {:else}
                       <Button size="sm" variant="secondary" href={`/sandboxes/${sandbox.sandboxID}`}>
-                        <SquareTerminal class="size-3.5" />
+                        <TerminalWindow class="size-3.5" />
                         Open
                       </Button>
                       <Button
@@ -253,7 +253,7 @@
                       onclick={() => handleKill(sandbox.sandboxID)}
                       disabled={pendingSandboxAction === sandbox.sandboxID}
                     >
-                      <Trash2 class="size-3.5" />
+                      <Trash class="size-3.5" />
                       Kill
                     </Button>
                   </div>

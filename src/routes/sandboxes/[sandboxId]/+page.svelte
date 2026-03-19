@@ -28,11 +28,11 @@
     HardDrive,
     Pause,
     Play,
-    RefreshCcw,
-    RotateCcw,
-    TerminalSquare,
-    Trash2,
-  } from "lucide-svelte";
+    ArrowsCounterClockwise,
+    ArrowCounterClockwise,
+    TerminalWindow,
+    Trash,
+  } from "phosphor-svelte";
 
   let { data }: { data: PageData } = $props();
 
@@ -262,7 +262,7 @@
 
     <div class="flex flex-wrap gap-2">
       <Button variant="outline" onclick={refreshSandbox} disabled={actionPending}>
-        <RefreshCcw class="size-4" />
+        <ArrowsCounterClockwise class="size-4" />
         Refresh status
       </Button>
       {#if sandbox.state === "paused"}
@@ -277,7 +277,7 @@
         </Button>
       {/if}
       <Button variant="destructive" onclick={handleKill} disabled={actionPending}>
-        <Trash2 class="size-4" />
+        <Trash class="size-4" />
         Kill
       </Button>
     </div>
@@ -339,7 +339,7 @@
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
           <CardTitle class="flex items-center gap-2 text-xl">
-            <TerminalSquare class="size-5 text-accent" />
+            <TerminalWindow class="size-5 text-accent" />
             Terminal
           </CardTitle>
           <CardDescription class="max-w-2xl leading-6">
@@ -353,7 +353,7 @@
             {terminalState}
           </Badge>
           <Button onclick={openTerminal} disabled={sandbox.state !== "running"}>
-            <RotateCcw class="size-4" />
+            <ArrowCounterClockwise class="size-4" />
             Reconnect
           </Button>
         </div>
