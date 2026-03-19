@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import "../app.css";
   import { goto, invalidateAll } from "$app/navigation";
   import type { LayoutData } from "./$types";
@@ -40,7 +41,14 @@
     launchDialogOpen = false;
     sidebarOpen = false;
     await invalidateAll();
-    await goto(`/?sandbox=${sandboxId}`);
+    const params = new URLSearchParams(page.url.searchParams);
+
+    if (!params.getAll("sandbox").includes(sandboxId)) {
+      params.append("sandbox", sandboxId);
+    }
+
+    params.set("active", sandboxId);
+    await goto(`/?${params.toString()}`);
   }
 </script>
 

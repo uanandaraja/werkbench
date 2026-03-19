@@ -10,9 +10,11 @@
 
   let {
     sandbox,
+    active = true,
     onKilled,
   }: {
     sandbox: ListedSandbox;
+    active?: boolean;
     onKilled?: () => void;
   } = $props();
 
@@ -51,6 +53,13 @@
     socket.send(JSON.stringify({ type: "resize", cols: xterm.cols, rows: xterm.rows }));
   }
 
+  function syncActiveTerminal() {
+    if (!active || !xterm) return;
+    fitAddon?.fit();
+    sendResize();
+    xterm.focus();
+  }
+
   async function openTerminal() {
     if (!xterm || sandbox.state !== "running") return;
     cleanupSocket();
@@ -70,8 +79,7 @@
     socket.onopen = () => {
       if (!xterm) return;
       terminalState = "open";
-      xterm.focus();
-      sendResize();
+      syncActiveTerminal();
       resizeObserver = new ResizeObserver(() => {
         fitAddon?.fit();
         sendResize();
@@ -199,6 +207,12 @@
   $effect(() => {
     if (ghosttyReady && sandbox.state === "running" && terminalState === "idle" && xterm) {
       void openTerminal();
+    }
+  });
+
+  $effect(() => {
+    if (ghosttyReady && active && xterm) {
+      syncActiveTerminal();
     }
   });
 </script>

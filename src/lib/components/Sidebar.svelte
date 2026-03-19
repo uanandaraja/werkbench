@@ -35,7 +35,10 @@
     return next;
   });
 
-  const selectedSandboxId = $derived(page.url.searchParams.get("sandbox"));
+  const openSandboxIds = $derived(page.url.searchParams.getAll("sandbox"));
+  const selectedSandboxId = $derived(
+    page.url.searchParams.get("active") ?? openSandboxIds[openSandboxIds.length - 1] ?? null,
+  );
 
   function sandboxesForWorkspace(workspaceId: string) {
     return sandboxes.filter((s) => s.metadata?.workspaceId === workspaceId);
@@ -58,7 +61,14 @@
   }
 
   function selectSandbox(sandboxId: string) {
-    goto(`/?sandbox=${sandboxId}`, { replaceState: false });
+    const params = new URLSearchParams(page.url.searchParams);
+
+    if (!openSandboxIds.includes(sandboxId)) {
+      params.append("sandbox", sandboxId);
+    }
+
+    params.set("active", sandboxId);
+    goto(`/?${params.toString()}`, { replaceState: false });
     onClose?.();
   }
 </script>
