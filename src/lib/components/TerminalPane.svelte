@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import type { ListedSandbox } from "$lib/werkbench/types";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { ArrowCounterClockwise, WarningCircle, X } from "phosphor-svelte";
+  import { WarningCircle } from "phosphor-svelte";
 
   let {
     sandbox,
@@ -412,34 +411,6 @@ selection-background = ${cssVar("--terminal-selection", "rgba(103, 200, 255, 0.2
     : 'border-border/50 bg-field/10'}"
   onfocusin={activatePane}
 >
-  <div class="flex h-9 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-3">
-    <div class="flex items-center gap-2">
-      <button class="text-sm text-foreground/70" onclick={activatePane}>{label}</button>
-    </div>
-
-    <div class="flex items-center gap-1">
-      <Button
-        size="xs"
-        variant="ghost"
-        onclick={() => openTerminal()}
-        disabled={sandbox.state !== "running"}
-        title={`Reconnect ${label.toLowerCase()}`}
-      >
-        <ArrowCounterClockwise class="size-3.5" />
-      </Button>
-      {#if closeable}
-        <Button
-          size="xs"
-          variant="ghost"
-          onclick={onClose}
-          title={`Close ${label.toLowerCase()}`}
-        >
-          <X class="size-3.5" />
-        </Button>
-      {/if}
-    </div>
-  </div>
-
   {#if terminalError}
     <div class="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
       <WarningCircle class="size-3.5 flex-shrink-0" />

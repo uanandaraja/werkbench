@@ -235,9 +235,9 @@
 </script>
 
 <div class="flex h-full flex-col bg-background">
-  <div class="flex h-10 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-4">
+  <div class="flex h-10 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-3">
     <div class="flex items-center gap-3">
-      <div class="flex items-center gap-1 rounded-md border border-border/60 bg-field/40 p-0.5">
+      <div class="flex items-center gap-1">
         <Button
           size="xs"
           variant={panelMode === "terminal" ? "secondary" : "ghost"}
@@ -350,7 +350,7 @@
   {/if}
 
   {#if browserError && panelMode === "browser"}
-    <div class="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+    <div class="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
       <WarningCircle class="size-3.5 flex-shrink-0" />
       {browserError}
     </div>
