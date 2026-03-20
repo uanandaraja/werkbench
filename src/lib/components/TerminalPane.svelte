@@ -407,28 +407,14 @@ selection-background = ${cssVar("--terminal-selection", "rgba(103, 200, 255, 0.2
 </script>
 
 <div
-  class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[calc(var(--radius)-0.1rem)] border transition-colors {active
+  class="flex min-h-0 min-w-0 h-full flex-1 flex-col overflow-hidden border transition-colors {active
     ? 'border-border bg-field/20 shadow-[0_0_0_1px_color-mix(in_oklch,var(--border)_85%,transparent)]'
     : 'border-border/50 bg-field/10'}"
   onfocusin={activatePane}
 >
   <div class="flex h-9 flex-shrink-0 items-center justify-between border-b border-sidebar-divider px-3">
     <div class="flex items-center gap-2">
-      <div class="size-1.5 rounded-full {terminalState === 'open'
-        ? 'bg-status-running'
-        : terminalState === 'error'
-          ? 'bg-destructive'
-          : 'bg-foreground/20'}"></div>
       <button class="text-sm text-foreground/70" onclick={activatePane}>{label}</button>
-      {#if terminalState === "connecting"}
-        <span class="text-xs text-foreground/30">connecting...</span>
-      {:else if terminalState === "open"}
-        <span class="text-xs text-foreground/30">connected</span>
-      {:else if terminalState === "closed"}
-        <span class="text-xs text-foreground/30">disconnected</span>
-      {:else if terminalState === "error"}
-        <span class="text-xs text-destructive/70">error</span>
-      {/if}
     </div>
 
     <div class="flex items-center gap-1">
@@ -461,9 +447,9 @@ selection-background = ${cssVar("--terminal-selection", "rgba(103, 200, 255, 0.2
     </div>
   {/if}
 
-  <div class="terminal-shell min-h-0 flex-1 overflow-hidden p-1">
+  <div class="terminal-shell min-h-0 flex-1 overflow-hidden">
     <div
-      class="terminal-host h-full rounded-[calc(var(--radius)-0.3rem)] outline-none"
+      class="terminal-host h-full outline-none"
       bind:this={terminalElement}
       tabindex="-1"
     ></div>

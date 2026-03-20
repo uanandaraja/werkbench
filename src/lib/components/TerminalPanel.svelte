@@ -257,10 +257,6 @@
           Browser
         </Button>
       </div>
-      <div
-        class="size-1.5 rounded-full {sandbox.state === 'running' ? 'bg-status-running' : 'bg-status-paused'}"
-      ></div>
-      <span class="text-sm text-foreground/40 capitalize">{sandbox.state}</span>
       {#if panelMode === "browser"}
         {#if browserState === "starting"}
           <span class="text-sm text-foreground/30">starting desktop...</span>
@@ -269,14 +265,6 @@
         {:else if browserState === "error"}
           <span class="text-sm text-destructive/70">desktop error</span>
         {/if}
-      {:else}
-        <span class="text-sm text-foreground/30">
-          {paneIds.length === 1
-            ? "single terminal"
-            : splitLayout === "columns"
-              ? "split side by side"
-              : "split stacked"}
-        </span>
       {/if}
     </div>
 
@@ -379,7 +367,7 @@
       </div>
     </div>
   {:else}
-    <div class:hidden={panelMode !== "terminal"} class="flex flex-1 overflow-hidden p-1">
+    <div class:hidden={panelMode !== "terminal"} class="flex flex-1 overflow-hidden">
       {#if paneIds.length === 1}
         <TerminalPane
           sandbox={sandbox}
@@ -417,7 +405,7 @@
             onpointerdown={beginSplitResize}
           ></button>
 
-          <div class="min-h-0 min-w-0">
+          <div class="min-h-0 min-w-0 h-full">
             <TerminalPane
               sandbox={sandbox}
               label="Terminal 2"
