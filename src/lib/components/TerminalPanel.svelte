@@ -15,8 +15,8 @@
     Globe,
     Pause,
     Play,
-    SplitHorizontal,
-    SplitVertical,
+    SquareSplitHorizontal,
+    SquareSplitVertical,
     Terminal,
     Trash,
     WarningCircle,
@@ -297,9 +297,9 @@
           title={paneIds.length === 1 ? "Open split terminal" : "Close split terminal"}
         >
           {#if paneIds.length === 1}
-            <SplitHorizontal class="size-3.5" />
+            <SquareSplitHorizontal class="size-3.5" />
           {:else}
-            <SplitVertical class="size-3.5" />
+            <SquareSplitVertical class="size-3.5" />
           {/if}
         </Button>
         {#if paneIds.length > 1}
@@ -311,9 +311,9 @@
             title={splitLayout === "columns" ? "Stack panes" : "Show panes side by side"}
           >
             {#if splitLayout === "columns"}
-              <SplitVertical class="size-3.5" />
+              <SquareSplitVertical class="size-3.5" />
             {:else}
-              <SplitHorizontal class="size-3.5" />
+              <SquareSplitHorizontal class="size-3.5" />
             {/if}
           </Button>
         {/if}

@@ -55,6 +55,7 @@ const userEnv = [
   'export EDITOR=nvim',
   'export VISUAL=nvim',
   'export PAGER=less',
+  'export PS1="\\u@e2b:\\W\\\\$ "',
   'alias ll="ls -lah"',
   'alias la="ls -A"',
   'alias gs="git status"',
