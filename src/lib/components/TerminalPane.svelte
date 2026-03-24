@@ -179,6 +179,7 @@
     let socket: WebSocket | null = null;
     let callbacks: PtyCallbacks = {};
     const decoder = new TextDecoder();
+    const suppressedReplies = ["\u001b[?1;2c"];
 
     const closeSocket = () => {
       if (!socket) return;
@@ -297,7 +298,15 @@
       },
       sendInput(data) {
         if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-        socket.send(JSON.stringify({ type: "input", data }));
+
+        let payload = data;
+        for (const reply of suppressedReplies) {
+          payload = payload.replaceAll(reply, "");
+        }
+
+        if (!payload) return true;
+
+        socket.send(JSON.stringify({ type: "input", data: payload }));
         return true;
       },
       resize(cols, rows, meta) {
