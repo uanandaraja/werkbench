@@ -2,8 +2,11 @@
   import { page } from "$app/state";
   import { goto, invalidateAll } from "$app/navigation";
   import type { Workspace, ListedSandbox } from "$lib/werkbench/types";
-  import { resumeSandboxCommand } from "$lib/remote/werkbench.remote";
-  import { CaretDown, CaretRight, Play, Plus, Terminal } from "phosphor-svelte";
+  import {
+    deleteWorkspaceCommand,
+    resumeSandboxCommand,
+  } from "$lib/remote/werkbench.remote";
+  import { CaretDown, CaretRight, Play, Plus, Terminal, Trash } from "phosphor-svelte";
 
   let {
     workspaces,
@@ -11,6 +14,7 @@
     open = false,
     onAddWorkspace,
     onEditWorkspace,
+    onDeleteWorkspace,
     onLaunchWorkspace,
     onClose,
   }: {
@@ -19,6 +23,7 @@
     open?: boolean;
     onAddWorkspace: () => void;
     onEditWorkspace: (workspace: Workspace) => void;
+    onDeleteWorkspace?: (workspaceId: string) => void | Promise<void>;
     onLaunchWorkspace: (workspace: Workspace) => void;
     onClose?: () => void;
   } = $props();
@@ -93,6 +98,22 @@
       }
     }
   }
+
+  async function handleDeleteWorkspace(event: MouseEvent, workspace: Workspace) {
+    event.stopPropagation();
+    actionError = "";
+
+    const confirmed = window.confirm(`Delete workspace "${workspace.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteWorkspaceCommand({ workspaceId: workspace.id });
+      await invalidateAll();
+      await onDeleteWorkspace?.(workspace.id);
+    } catch (err) {
+      actionError = err instanceof Error ? err.message : "Failed to delete workspace";
+    }
+  }
 </script>
 
 <aside
@@ -158,6 +179,16 @@
             {:else}
               <CaretRight class="size-3 flex-shrink-0 text-foreground/30" />
             {/if}
+          </button>
+
+          <button
+            type="button"
+            class="flex size-7 flex-shrink-0 items-center justify-center rounded-md text-destructive/0 opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+            onclick={(event) => handleDeleteWorkspace(event, workspace)}
+            title={`Delete ${workspace.name}`}
+            aria-label={`Delete ${workspace.name}`}
+          >
+            <Trash class="size-3.5" />
           </button>
         </div>
 

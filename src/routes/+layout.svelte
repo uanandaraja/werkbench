@@ -32,6 +32,18 @@
     launchDialogOpen = true;
   }
 
+  async function handleWorkspaceDeleted(workspaceId: string) {
+    if (workspaceModalWorkspace?.id === workspaceId) {
+      workspaceModalWorkspace = null;
+      workspaceModalOpen = false;
+    }
+
+    if (launchDialogWorkspace?.id === workspaceId) {
+      launchDialogWorkspace = null;
+      launchDialogOpen = false;
+    }
+  }
+
   async function onWorkspaceSaved() {
     workspaceModalOpen = false;
     await invalidateAll();
@@ -70,6 +82,7 @@
     open={sidebarOpen}
     onAddWorkspace={openCreateModal}
     onEditWorkspace={openEditModal}
+    onDeleteWorkspace={handleWorkspaceDeleted}
     onLaunchWorkspace={openLaunchDialog}
     onClose={() => (sidebarOpen = false)}
   />
