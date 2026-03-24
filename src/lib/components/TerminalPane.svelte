@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import type { ListedSandbox } from "$lib/werkbench/types";
-  import { WarningCircle } from "phosphor-svelte";
+  import { WarningCircle, X } from "phosphor-svelte";
 
   let {
     sandbox,
@@ -450,11 +450,25 @@ selection-background = ${cssVar("--terminal-selection", "rgba(103, 200, 255, 0.2
 </script>
 
 <div
-  class="flex min-h-0 min-w-0 h-full flex-1 flex-col overflow-hidden border transition-colors {active
+  class="relative flex min-h-0 min-w-0 h-full flex-1 flex-col overflow-hidden border transition-colors {active
     ? 'border-border bg-field/20 shadow-[0_0_0_1px_color-mix(in_oklch,var(--border)_85%,transparent)]'
     : 'border-border/50 bg-field/10'}"
   onfocusin={activatePane}
 >
+  {#if closeable && onClose}
+    <button
+      type="button"
+      class="absolute right-2 top-2 z-10 inline-flex size-7 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground/55 backdrop-blur transition hover:border-border hover:text-foreground"
+      aria-label={`Close ${label}`}
+      onclick={(event) => {
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      <X class="size-3.5" />
+    </button>
+  {/if}
+
   {#if terminalError}
     <div class="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
       <WarningCircle class="size-3.5 flex-shrink-0" />
